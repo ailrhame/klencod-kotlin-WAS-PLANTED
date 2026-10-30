@@ -30,38 +30,14 @@ class MainActivity : Activity() {
     }
 
     private val plants = listOf(
-        Plant(
-            "flower", "زهرة القمر", "🌸", 2,
-            "شائعة", "زهرة صغيرة تنمو بهدوء تحت ضوء القمر."
-        ),
-        Plant(
-            "mushroom", "فطر الأحلام", "🍄", 4,
-            "غير شائع", "فطر غامض يعيش في أعماق الغابات."
-        ),
-        Plant(
-            "crystal", "النبتة البلورية", "💎", 6,
-            "نادرة", "نبتة تتشكل أوراقها من البلورات."
-        ),
-        Plant(
-            "ancient", "شجرة الحكمة", "🌳", 8,
-            "نادرة", "شجرة قديمة تحمل أسراراً لا يعرفها أحد."
-        ),
-        Plant(
-            "moon", "زهرة النجوم", "🌺", 12,
-            "نادرة جداً", "زهرة لا تتفتح إلا بعد رحلة طويلة."
-        ),
-        Plant(
-            "giant", "العملاق الأخضر", "🌲", 24,
-            "أسطورية", "شجرة هائلة تتجاوز حدود الغابة."
-        ),
-        Plant(
-            "mythical", "شجرة الخلود", "🌳", 36,
-            "شديدة الندرة", "كائن أسطوري لا يظهر إلا للمثابرين."
-        ),
-        Plant(
-            "fungus_king", "ملك الفطر", "🍄", 18,
-            "أسطورية", "فطر نادر يستطيع إنشاء مملكة كاملة."
-        )
+        Plant("flower", "زهرة القمر", "🌸", 2, "شائعة", "زهرة صغيرة تنمو بهدوء تحت ضوء القمر."),
+        Plant("mushroom", "فطر الأحلام", "🍄", 4, "غير شائع", "فطر غامض يعيش في أعماق الغابات."),
+        Plant("crystal", "النبتة البلورية", "💎", 6, "نادرة", "نبتة تتشكل أوراقها من البلورات."),
+        Plant("ancient", "شجرة الحكمة", "🌳", 8, "نادرة", "شجرة قديمة تحمل أسراراً لا يعرفها أحد."),
+        Plant("moon", "زهرة النجوم", "🌺", 12, "نادرة جداً", "زهرة لا تتفتح إلا بعد رحلة طويلة."),
+        Plant("giant", "العملاق الأخضر", "🌲", 24, "أسطورية", "شجرة هائلة تتجاوز حدود الغابة."),
+        Plant("mythical", "شجرة الخلود", "🌳", 36, "شديدة الندرة", "كائن أسطوري لا يظهر إلا للمثابرين."),
+        Plant("fungus_king", "ملك الفطر", "🍄", 18, "أسطورية", "فطر نادر يستطيع إنشاء مملكة كاملة.")
     )
 
     private lateinit var plant: Plant
@@ -117,13 +93,14 @@ class MainActivity : Activity() {
     }
 
     private fun loadState() {
-        var id = prefs.getString("plant_id", null)
+        val id = prefs.getString("plant_id", null)
 
-        if (id == null) {
-            plant = plants.random()
-            prefs.edit().putString("plant_id", plant.id).apply()
+        plant = if (id == null) {
+            plants.random().also {
+                prefs.edit().putString("plant_id", it.id).apply()
+            }
         } else {
-            plant = plants.find { it.id == id } ?: plants.random()
+            plants.find { it.id == id } ?: plants.random()
         }
 
         progressMs = prefs.getLong("progress", 0L)
@@ -186,7 +163,7 @@ class MainActivity : Activity() {
             textSize = 14f
             isAllCaps = false
             setTextColor(Color.WHITE)
-            background = background(
+            background = this@MainActivity.background(
                 Color.rgb(45, 105, 75),
                 16
             )
@@ -200,7 +177,7 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             setPadding(dp(18), dp(20), dp(18), dp(20))
-            background = background(
+            background = this@MainActivity.background(
                 Color.rgb(19, 30, 26),
                 22,
                 Color.rgb(42, 66, 54)
@@ -220,10 +197,9 @@ class MainActivity : Activity() {
 
     private fun buildInterface() {
 
-        val scroll = ScrollView(this).apply {
-            setBackgroundColor(Color.rgb(9, 17, 15))
-            fillViewport = true
-        }
+        val scroll = ScrollView(this)
+        scroll.setBackgroundColor(Color.rgb(9, 17, 15))
+        scroll.isFillViewport = true
 
         root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -265,11 +241,7 @@ class MainActivity : Activity() {
 
         addSpace(hero, 15)
 
-        plantIcon = text(
-            "🌱",
-            86f,
-            Color.WHITE
-        )
+        plantIcon = text("🌱", 86f, Color.WHITE)
 
         hero.addView(
             plantIcon,
@@ -332,9 +304,6 @@ class MainActivity : Activity() {
             progressBackgroundTintList = ColorStateList.valueOf(
                 Color.rgb(43, 58, 48)
             )
-            progressDrawable?.let {
-                it.setBounds(0, 0, it.intrinsicWidth, it.intrinsicHeight)
-            }
         }
 
         growthCard.addView(
@@ -479,22 +448,41 @@ class MainActivity : Activity() {
             progressMs = currentProgress()
             active = false
             startedAt = 0L
+
             handler.removeCallbacks(ticker)
+
             saveState()
             refresh()
+
         } else {
             active = true
             startedAt = System.currentTimeMillis()
+
             saveState()
+
             handler.removeCallbacks(ticker)
             handler.post(ticker)
+
             refresh()
         }
     }
 
     private fun plantNewSeed() {
 
-        plant = plants.random()
+        val undiscovered = plants.filter { candidate ->
+            val collection = prefs.getStringSet(
+                "collection",
+                emptySet()
+            ) ?: emptySet()
+
+            !collection.contains(candidate.id)
+        }
+
+        plant = if (undiscovered.isNotEmpty()) {
+            undiscovered.random()
+        } else {
+            plants.random()
+        }
 
         progressMs = 0L
         startedAt = 0L
